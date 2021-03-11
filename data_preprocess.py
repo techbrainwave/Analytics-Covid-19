@@ -18,6 +18,7 @@ def preprocess_data():
     :return:
     df = pandas.DataFrame
     '''
+
     c_date = "Date"
     c_date_format_in = "%m-%d-%Y"
     c_country_region = "Country_Region"
@@ -151,12 +152,13 @@ def show_charts(cumulative, filter):
 
 
 
-def download_file():
+def download_file(data, path=None):
     '''
     Download the summary file as .csv
     :return: N/A
     '''
-    pass
+
+    data.to_csv('..\..\summary.csv', index=True)
 
 
 
@@ -168,7 +170,8 @@ def main():
     df_raw = preprocess_data()
     df_summ = generate_summary(df_raw)
     # show_charts(df_summ, ("US","California") )
-    show_charts(df_summ, ("US","New York") )
+    # show_charts(df_summ, ("US","New York") )
+    download_file(df_summ)
 
 
 
