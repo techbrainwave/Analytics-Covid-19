@@ -23,7 +23,6 @@ def preprocess_data():
     c_country_region = "Country_Region"
     c_province_state = "Province_State"
 
-    # countries = ["US"]
     countries = ["US","China","India"]
 
 
@@ -31,8 +30,6 @@ def preprocess_data():
     df_us   = pd.DataFrame()
 
     c_pattern = ".csv"
-    # c_pattern = "01-01-2021.csv"
-    # c_pattern = "2021.csv"
     path_all = os.fspath("..\..\COVID-19-master\csse_covid_19_data\csse_covid_19_daily_reports")
     path_us  = os.fspath("..\..\COVID-19-master\csse_covid_19_data\csse_covid_19_daily_reports_us")
 
@@ -45,14 +42,11 @@ def preprocess_data():
         if file.endswith(c_pattern):
 
             file_path_all = os.path.join(path_all,file)
-            date = dt.datetime.strptime(file.strip(".csv"),c_date_format_in).date()
+            date = dt.datetime.strptime(file.strip(".csv"), c_date_format_in).date()
             lg.debug("Date: {}".format(date))
 
             # Read All
-            df_all = pd.read_csv(file_path_all,
-                                 # index_col= [1,0],
-                                 # usecols=[2, 3, 4, 7, 8, 9, 10, 12, 13],  # 'All' Template
-                                 na_values=["nan"])
+            df_all = pd.read_csv(file_path_all, na_values=["nan"])
 
             # Slice cols
             if df_all.shape[1] == 14: # For 14 Column csv files
@@ -64,7 +58,6 @@ def preprocess_data():
                 df_all = df_all.iloc[:,0:6]
                 df_all = df_all\
                         .rename(columns={"Province/State": c_province_state, "Country/Region": c_country_region})
-                        # .rename(columns={"Province/State": "Province_State", "Country/Region": "Country_Region"})
 
 
             df_all[c_date] = date # Set Date
@@ -73,7 +66,6 @@ def preprocess_data():
             # Remove US and keep Rest, Set Indices
             df_rest_tmp = df_all[df_all.Country_Region.ne("US")] \
                         .set_index([c_country_region,c_province_state,c_date])
-                        # .set_index(["Country_Region","Province_State","Date"])
 
 
             # Combine files
