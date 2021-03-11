@@ -1,22 +1,38 @@
 import pandas as pd
+import matplotlib.pyplot as mpl
 import os
 import datetime as dt
+import logging as lg
+# lg.basicConfig(level=lg.DEBUG)
 
+# Data source: https://github.com/CSSEGISandData/COVID-19
 # References:
 #   https://stackoverflow.com/questions/25224545/filtering-multiple-items-in-a-multi-index-python-panda-dataframe
-
+#   https://www.digitalocean.com/community/tutorials/how-to-use-logging-in-python-3
+#   https://stackoverflow.com/questions/23198053/how-do-you-shift-pandas-dataframe-with-a-multiindex
+#   https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html#sorting-a-multiindex
 
 def preprocess_data():
     '''
     Read all the individual files and combine into a single summarized file
-    :return: N/A
+    :return:
+    df = pandas.DataFrame
     '''
-    date_format_in = "%m-%d-%Y"
+    c_date = "Date"
+    c_date_format_in = "%m-%d-%Y"
+    c_country_region = "Country_Region"
+    c_province_state = "Province_State"
+
+    # countries = ["US"]
+    countries = ["US","China","India"]
+
 
     df_rest = pd.DataFrame()
     df_us   = pd.DataFrame()
 
-
+    c_pattern = ".csv"
+    # c_pattern = "01-01-2021.csv"
+    # c_pattern = "2021.csv"
     path_all = os.fspath("..\..\COVID-19-master\csse_covid_19_data\csse_covid_19_daily_reports")
     path_us  = os.fspath("..\..\COVID-19-master\csse_covid_19_data\csse_covid_19_daily_reports_us")
 
@@ -26,47 +42,65 @@ def preprocess_data():
 
     # Daily Reports
     for file in files_all:
-        if file.endswith("21.csv"):
+        if file.endswith(c_pattern):
 
             file_path_all = os.path.join(path_all,file)
-            date = dt.datetime.strptime(file.strip(".csv"),date_format_in).date()
-
+            date = dt.datetime.strptime(file.strip(".csv"),c_date_format_in).date()
+            lg.debug("Date: {}".format(date))
 
             # Read All
             df_all = pd.read_csv(file_path_all,
                                  # index_col= [1,0],
-                                 usecols=[2, 3, 4, 7, 8, 9, 10, 12, 13],  # 'All' Template
+                                 # usecols=[2, 3, 4, 7, 8, 9, 10, 12, 13],  # 'All' Template
                                  na_values=["nan"])
-            df_all['Date'] = date # Set Date
+
+            # Slice cols
+            if df_all.shape[1] == 14: # For 14 Column csv files
+
+                df_all = df_all.iloc[:,[2, 3, 4, 7, 8, 9]]
+
+            elif df_all.shape[1] in [8,6]: # For 8 or 6 Column csv files
+
+                df_all = df_all.iloc[:,0:6]
+                df_all = df_all\
+                        .rename(columns={"Province/State": c_province_state, "Country/Region": c_country_region})
+                        # .rename(columns={"Province/State": "Province_State", "Country/Region": "Country_Region"})
+
+
+            df_all[c_date] = date # Set Date
 
 
             # Remove US and keep Rest, Set Indices
             df_rest_tmp = df_all[df_all.Country_Region.ne("US")] \
-                        .set_index(["Country_Region","Province_State","Date"])
+                        .set_index([c_country_region,c_province_state,c_date])
+                        # .set_index(["Country_Region","Province_State","Date"])
 
 
             # Combine files
             df_rest = df_rest\
                      .append(df_rest_tmp, ignore_index=False)
 
+    # Slice final
+    df_rest = df_rest.iloc[:,0:4]
+
 
     # Daily Reports - US
     for file in files_us:
-        if file.endswith(".csv"):
+        if file.endswith(c_pattern):
 
             file_path_us = os.path.join(path_us,file)
-            date = dt.datetime.strptime(file.strip(".csv"),date_format_in).date()
-
+            date = dt.datetime.strptime(file.strip(".csv"),c_date_format_in).date()
+            lg.debug("Date : {}".format(date))
 
             # Read US
             df_us_tmp = pd.read_csv(file_path_us,
-                                usecols=[0, 1, 2, 5, 6, 7, 8, 10, 13],  # 'US' Template
+                                usecols=[0, 1, 2, 5, 6, 7],  # 'US' Template
                                 na_values=["nan"])
-            df_us_tmp['Date'] = date # Set Date
+            df_us_tmp[c_date] = date # Set Date
 
 
             # Set Indices
-            df_us_tmp = df_us_tmp.set_index(["Country_Region","Province_State","Date"])
+            df_us_tmp = df_us_tmp.set_index([c_country_region,c_province_state,c_date])
 
 
             # Combine files
@@ -80,12 +114,49 @@ def preprocess_data():
 
 
     # Filter by Countries
-    df = df[df.index.isin(["US","China","India"],level="Country_Region")]
+    df = df[df.index.isin(countries,level=c_country_region)]
 
 
     # Sort
     df = df.sort_index(ascending=True)
-    # print()
+
+
+    return df
+
+
+
+def generate_summary(raw):
+    '''
+    COVID Case summary
+    :return:
+    daily_cummulative = pandas.DataFrame
+    '''
+
+    df_nums = raw.iloc[:,1:4]
+
+    # Previous days count / Shifted Province level
+    df_prev_day = df_nums.groupby(level=1)\
+                         .shift(1)
+
+    daily_cummulative = df_nums - df_prev_day
+
+
+    return daily_cummulative
+
+
+
+def show_charts(cumulative, filter):
+    '''
+    Plot selected regions
+    :return: N/A
+    '''
+
+    # Filter by cross section
+    mpl.plot(cumulative.xs(filter))
+    mpl.savefig('Covid_cases.png')
+    # mpl.show()
+    mpl.close()
+
 
 
 def download_file():
@@ -96,13 +167,19 @@ def download_file():
     pass
 
 
+
 def main():
     '''
     The main method!
     :return:N/A
     '''
-    preprocess_data()
+    df_raw = preprocess_data()
+    df_summ = generate_summary(df_raw)
+    # show_charts(df_summ, ("US","California") )
+    show_charts(df_summ, ("US","New York") )
+
 
 
 if __name__ == "__main__":
     main()
+
