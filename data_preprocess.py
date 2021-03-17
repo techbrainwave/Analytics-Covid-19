@@ -25,18 +25,15 @@ def preprocess_data(countries):
     c_date_format_in = "%m-%d-%Y"
     c_country_region = "Country_Region"
     c_province_state = "Province_State"
+    c_pattern = ".csv"
 
 
     df_rest = pd.DataFrame()
     df_us   = pd.DataFrame()
 
-    c_pattern = ".csv"
 
     files_all = os.listdir(path=path_all)
     files_us  = os.listdir(path=path_us)
-
-
-    df_in = pd.read_csv(os.path.join(path_dat, "IN-covid.csv"), na_values=["nan"])
 
 
     # Daily Reports
@@ -49,6 +46,7 @@ def preprocess_data(countries):
 
             # Read All
             df_all = pd.read_csv(file_path_all, na_values=["nan"])
+
 
             # Slice cols
             if df_all.shape[1] == 14: # For 14 Column csv files
@@ -182,7 +180,6 @@ def main():
     # show_charts(df_summ, ("US","California") )
     # show_charts(df_summ, ("US","New York") )
     download_file(df_summ)
-
 
 
 if __name__ == "__main__":
