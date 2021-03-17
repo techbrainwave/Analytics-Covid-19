@@ -1,3 +1,5 @@
+from globals import *
+from setup import *
 import pandas as pd
 import matplotlib.pyplot as mpl
 import os
@@ -12,7 +14,7 @@ import logging as lg
 #   https://stackoverflow.com/questions/23198053/how-do-you-shift-pandas-dataframe-with-a-multiindex
 #   https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html#sorting-a-multiindex
 
-def preprocess_data():
+def preprocess_data(countries):
     '''
     Read all the individual files and combine into a single summarized file
     :return:
@@ -24,18 +26,17 @@ def preprocess_data():
     c_country_region = "Country_Region"
     c_province_state = "Province_State"
 
-    countries = ["US","China","India"]
-
 
     df_rest = pd.DataFrame()
     df_us   = pd.DataFrame()
 
     c_pattern = ".csv"
-    path_all = os.fspath("..\..\COVID-19-master\csse_covid_19_data\csse_covid_19_daily_reports")
-    path_us  = os.fspath("..\..\COVID-19-master\csse_covid_19_data\csse_covid_19_daily_reports_us")
 
     files_all = os.listdir(path=path_all)
-    files_us = os.listdir(path=path_us)
+    files_us  = os.listdir(path=path_us)
+
+
+    df_in = pd.read_csv(os.path.join(path_dat, "IN-covid.csv"), na_values=["nan"])
 
 
     # Daily Reports
@@ -63,9 +64,13 @@ def preprocess_data():
 
             df_all[c_date] = date # Set Date
 
+            df_all.loc[df_all.Country_Region.eq(c_in) & df_all.Province_State.isnull(), c_province_state] = c_all # Set state values
+
+            df_all.loc[df_all.Country_Region.isin([c_mch,c_hk,c_mc]), c_country_region] = c_ch # Set country values
+
 
             # Remove US and keep Rest, Set Indices
-            df_rest_tmp = df_all[df_all.Country_Region.ne("US")] \
+            df_rest_tmp = df_all[df_all.Country_Region.ne(c_us)] \
                         .set_index([c_country_region,c_province_state,c_date])
 
 
@@ -110,8 +115,9 @@ def preprocess_data():
     df = df[df.index.isin(countries,level=c_country_region)]
 
 
-    # Sort
+    # Sort, drop col, and fill nan
     df = df.sort_index(ascending=True)
+    df = df.iloc[:,1:4].fillna(0)
 
 
     return df
@@ -125,7 +131,7 @@ def generate_summary(raw):
     daily_cummulative = pandas.DataFrame
     '''
 
-    df_nums = raw.iloc[:,1:4]
+    df_nums = raw #.iloc[:,1:4]
 
     # Previous days count / Shifted Province level
     df_prev_day = df_nums.groupby(level=1)\
@@ -146,6 +152,7 @@ def show_charts(cumulative, filter):
 
     # Filter by cross section
     mpl.plot(cumulative.xs(filter))
+
     mpl.savefig('Covid_cases.png')
     # mpl.show()
     mpl.close()
@@ -167,7 +174,10 @@ def main():
     The main method!
     :return:N/A
     '''
-    df_raw = preprocess_data()
+
+    countries = ["US","China","India"]
+
+    df_raw = preprocess_data(countries)
     df_summ = generate_summary(df_raw)
     # show_charts(df_summ, ("US","California") )
     # show_charts(df_summ, ("US","New York") )
