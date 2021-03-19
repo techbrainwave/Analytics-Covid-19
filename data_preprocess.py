@@ -122,7 +122,7 @@ def preprocess_data(countries):
 
 
 
-def generate_summary(raw):
+def generate_daily(raw):
     '''
     COVID Case summary
     :return:
@@ -131,12 +131,14 @@ def generate_summary(raw):
 
     df_nums = raw #.iloc[:,1:4]
 
+
     # Previous days count / Shifted Province level
     df_prev_day = df_nums.groupby(level=1)\
                          .shift(1)
 
     daily_cummulative = df_nums - df_prev_day
 
+    daily_cummulative = daily_cummulative.join(raw,rsuffix='_Cummulative')
 
     return daily_cummulative
 
@@ -176,10 +178,10 @@ def main():
     countries = ["US","China","India"]
 
     df_raw = preprocess_data(countries)
-    df_summ = generate_summary(df_raw)
-    # show_charts(df_summ, ("US","California") )
-    # show_charts(df_summ, ("US","New York") )
-    download_file(df_summ)
+    df_out = generate_daily(df_raw)
+    # show_charts(df_out, ("US","California") )
+    # show_charts(df_out, ("US","New York") )
+    download_file(df_out)
 
 
 if __name__ == "__main__":
