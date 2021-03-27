@@ -27,9 +27,17 @@ def preprocess_data(countries):
     c_province_state = "Province_State"
     c_pattern = ".csv"
 
+    # US Add data (US) – 1/22/2020 to 4/11/2020
+    date_st = dt.datetime.strptime("01-22-2020", c_date_format_in).date()
+    date_en = dt.datetime.strptime("04-11-2020", c_date_format_in).date()
 
-    df_rest = pd.DataFrame()
-    df_us   = pd.DataFrame()
+    # date_309 = dt.datetime.strptime("03-09-2020", c_date_format_in).date()
+    date_321 = dt.datetime.strptime("03-21-2020", c_date_format_in).date()
+
+
+    df_rest     = pd.DataFrame()
+    df_us_early = pd.DataFrame()
+    df_us       = pd.DataFrame()
 
 
     files_all = os.listdir(path=path_all)
@@ -45,17 +53,18 @@ def preprocess_data(countries):
             lg.debug("Date: {}".format(date))
 
             # Read All
-            df_all = pd.read_csv(file_path_all, na_values=["nan"])
+            df_all = pd.read_csv(file_path_all)
+            df_all.drop_duplicates(inplace=True)
 
 
             # Slice cols
-            if df_all.shape[1] == 14: # For 14 Column csv files
+            if df_all.shape[1] in [12,14]: # For 12 or 14 Column csv files
 
-                df_all = df_all.iloc[:,[2, 3, 4, 7, 8, 9]]
+                df_all = df_all.iloc[:,[2, 3, 7, 8, 9]]
 
             elif df_all.shape[1] in [8,6]: # For 8 or 6 Column csv files
 
-                df_all = df_all.iloc[:,0:6]
+                df_all = df_all.iloc[:,[0, 1, 3, 4, 5]]
                 df_all = df_all\
                         .rename(columns={"Province/State": c_province_state, "Country/Region": c_country_region})
 
@@ -69,15 +78,39 @@ def preprocess_data(countries):
 
             # Remove US and keep Rest, Set Indices
             df_rest_tmp = df_all[df_all.Country_Region.ne(c_us)] \
-                        .set_index([c_country_region,c_province_state,c_date])
+                            .groupby(by=[c_country_region, c_province_state, c_date]).sum()
 
 
-            # Combine files
+
+            # Combine files non US
             df_rest = df_rest\
                      .append(df_rest_tmp, ignore_index=False)
 
+
+
+            # Capture US (early) data only
+            if date_st <= date <= date_en:
+
+                df_us_early_tmp = df_all[df_all.Country_Region.eq(c_us)].copy() # US only
+
+
+                # Files from "01-22-2020"  to "03-21-2020"
+                if date <= date_321:
+                    df_us_early_tmp.loc[df_us_early_tmp.index, c_province_state] = c_all
+
+
+                df_us_early_tmp = df_us_early_tmp\
+                                    .groupby(by=[c_country_region, c_province_state, c_date]).sum() # Aggregate to State
+
+
+                # Combine files US (early)
+                df_us_early = df_us_early\
+                                .append(df_us_early_tmp, ignore_index=False)
+
+
+
     # Slice final
-    df_rest = df_rest.iloc[:,0:4]
+    df_rest = df_rest.iloc[:,0:3]
 
 
     # Daily Reports - US
@@ -90,18 +123,24 @@ def preprocess_data(countries):
 
             # Read US
             df_us_tmp = pd.read_csv(file_path_us,
-                                usecols=[0, 1, 2, 5, 6, 7],  # 'US' Template
-                                na_values=["nan"])
+                                usecols=[0, 1, 5, 6, 7])  # 'US' Template
+            df_us_tmp.drop_duplicates(inplace=True)
             df_us_tmp[c_date] = date # Set Date
 
 
             # Set Indices
-            df_us_tmp = df_us_tmp.set_index([c_country_region,c_province_state,c_date])
+            df_us_tmp = df_us_tmp.\
+                        groupby(by=[c_country_region, c_province_state, c_date]).sum()
 
 
             # Combine files
             df_us = df_us\
                     .append(df_us_tmp, ignore_index=False)
+
+
+    # Combine US & US Early
+    df_us = df_us\
+          .append(df_us_early, ignore_index=False)
 
 
     # Combine Rest & US
@@ -115,7 +154,7 @@ def preprocess_data(countries):
 
     # Sort, drop col, and fill nan
     df = df.sort_index(ascending=True)
-    df = df.iloc[:,1:4].fillna(0)
+    df = df.fillna(0)
 
 
     return df
@@ -134,8 +173,22 @@ def generate_daily(raw):
 
     # Previous days count / Shifted Province level
     df_prev_day = df_nums.groupby(level=1)\
-                         .shift(1)
+                         .shift(periods=1)
 
+
+    # Remove nan after shift down
+    df_na = df_prev_day.isna()
+    df_prev_na = df_prev_day[df_na.all(axis='columns')]
+
+
+    df_nums_na = df_prev_na.join(df_nums, lsuffix='NA')
+    df_nums_na = df_nums_na.iloc[:,3:7] # Remove nan cols
+    df_nums_na.iloc[:,:] = 0 # Set value to zero
+
+    df_prev_day.update(df_nums_na)
+
+
+    # Cummulative counts
     daily_cummulative = df_nums - df_prev_day
 
     daily_cummulative = daily_cummulative.join(raw,rsuffix='_Cummulative')
