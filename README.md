@@ -10,4 +10,4 @@ Root
   |-- Github Repo
               |-- COVID-19  (Home)
               |-- charts
-  |-- stats.csv 
+  |-- stats.csv  
