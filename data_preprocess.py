@@ -1,10 +1,12 @@
 from globals import *
 from setup import *
 import pandas as pd
-import matplotlib.pyplot as mpl
+import matplotlib.pyplot as plt
+import seaborn as sb
 import os
 import datetime as dt
 import logging as lg
+
 # lg.basicConfig(level=lg.DEBUG)
 
 # Data source: https://github.com/CSSEGISandData/COVID-19
@@ -22,16 +24,11 @@ def preprocess_data(countries):
     '''
 
     c_date = "Date"
-    c_date_format_in = "%m-%d-%Y"
-    c_country_region = "Country_Region"
-    c_province_state = "Province_State"
     c_pattern = ".csv"
 
     # US Add data (US) – 1/22/2020 to 4/11/2020
     date_st = dt.datetime.strptime("01-22-2020", c_date_format_in).date()
     date_en = dt.datetime.strptime("04-11-2020", c_date_format_in).date()
-
-    # date_309 = dt.datetime.strptime("03-09-2020", c_date_format_in).date()
     date_321 = dt.datetime.strptime("03-21-2020", c_date_format_in).date()
 
 
@@ -165,15 +162,16 @@ def generate_daily(raw):
     '''
     COVID Case summary
     :return:
-    daily_cummulative = pandas.DataFrame
+    daily_data = pandas.DataFrame
     '''
 
     df_nums = raw #.iloc[:,1:4]
 
 
     # Previous days count / Shifted Province level
-    df_prev_day = df_nums.groupby(level=1)\
+    df_prev_day = df_nums.groupby(level=[0,1])\
                          .shift(periods=1)
+
 
 
     # Remove nan after shift down
@@ -189,26 +187,102 @@ def generate_daily(raw):
 
 
     # Cummulative counts
-    daily_cummulative = df_nums - df_prev_day
+    daily_data = df_nums - df_prev_day
 
-    daily_cummulative = daily_cummulative.join(raw,rsuffix='_Cummulative')
+    daily_data = daily_data.join(raw,rsuffix='_Cummulative')
 
-    return daily_cummulative
+    return daily_data
 
 
 
-def show_charts(cumulative, filter):
+def show_charts(df_data):
     '''
-    Plot selected regions
+    Plot data
     :return: N/A
     '''
 
-    # Filter by cross section
-    mpl.plot(cumulative.xs(filter))
+    # Remove columns
+    df_daily = (df_data.iloc[:,0:3]).copy()
 
-    mpl.savefig('Covid_cases.png')
-    # mpl.show()
-    mpl.close()
+
+    # Clean data / remove bad data entries
+    df_daily = df_daily[~df_daily.index.isin(c_bad,level=c_province_state)]
+
+
+    # Summarize data at State level
+    df_state_tot = df_daily. \
+                    groupby(level=1).sum()
+
+    # Remove entry All from states
+    df_state_tot = df_state_tot[~df_state_tot.index.isin([c_all],level=c_province_state)]
+
+
+
+    # Read stats.csv
+    file_path_stats = os.path.join(path_stats, c_sfile)
+    df_stats = pd.read_csv(file_path_stats)
+
+    df_stats = df_stats.iloc[:,1:6] # Remove country col
+    df_stats = df_stats[df_stats.State.ne(c_all)] # Remove entry All
+
+    df_stats = df_stats.set_index(c_state) # Index by state
+
+
+    # Merge covid & stats data
+    df_state_data = df_state_tot.join(df_stats)
+
+
+
+    # Summarize to daily at Country level
+    df_cntot_daily = df_daily. \
+                    groupby(level=[0,2]).sum()
+
+
+    # Split data into US,IN,CH
+    df_ctry_us = df_cntot_daily[df_cntot_daily.index.isin([c_us],level=c_country_region)]
+    df_ctry_in = df_cntot_daily[df_cntot_daily.index.isin([c_in],level=c_country_region)]
+    df_ctry_ch = df_cntot_daily[df_cntot_daily.index.isin([c_ch],level=c_country_region)]
+
+    df_ctry_us=(df_ctry_us.reset_index(level=0)).iloc[:,1:4]
+    df_ctry_in=(df_ctry_in.reset_index(level=0)).iloc[:,1:4]
+    df_ctry_ch=(df_ctry_ch.reset_index(level=0)).iloc[:,1:4]
+
+
+    # Remove corrupt entries
+    rem_us = dt.datetime.strptime("02-23-2021", c_date_format_in).date()
+    rem_in = dt.datetime.strptime("06-10-2020", c_date_format_in).date()
+    df_ctry_us.drop(index=rem_us,inplace=True)
+    df_ctry_in.drop(index=rem_in,inplace=True)
+
+
+
+    # Histogram
+    plt.figure()
+    df_state_data.diff().hist(color="k", alpha=0.5, bins=50)
+    plt.savefig(os.path.join(path_charts,"Data_distribution.png"))
+    plt.close()
+
+
+    # Correlation
+    correlation = df_state_data.corr()
+    correlation.to_csv(os.path.join(path_charts,'Correlation_matrix.csv'))
+
+    # Heatmaps
+    sb.heatmap(correlation,linewidths=0.4)
+    plt.savefig(os.path.join(path_charts,'Correlation_matrix.png'), bbox_inches='tight')
+    plt.close()
+
+
+    # Country data
+    plt.plot(df_ctry_us)
+    plt.savefig(os.path.join(path_charts,'Covid_cases_US.png'))
+    plt.close()
+    plt.plot(df_ctry_in)
+    plt.savefig(os.path.join(path_charts,'Covid_cases_IN.png'))
+    plt.close()
+    plt.plot(df_ctry_ch)
+    plt.savefig(os.path.join(path_charts,'Covid_cases_CH.png'))
+    plt.close()
 
 
 
@@ -232,8 +306,8 @@ def main():
 
     df_raw = preprocess_data(countries)
     df_out = generate_daily(df_raw)
-    # show_charts(df_out, ("US","California") )
-    # show_charts(df_out, ("US","New York") )
+
+    show_charts(df_out)
     download_file(df_out)
 
 
