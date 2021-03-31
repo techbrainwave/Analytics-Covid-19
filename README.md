@@ -25,3 +25,10 @@ Subnational Analysis of Novel Coronavirus (COVID-19) across the top three populo
 Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE)
 
 https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data
+
+
+**Software**
+
+Tableau Desktop 2020.3
+
+Python 3.7
