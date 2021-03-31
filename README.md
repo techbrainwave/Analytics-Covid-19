@@ -35,21 +35,15 @@ Subnational Analysis of Novel Coronavirus (COVID-19) across the top three populo
 
     * U.S. Bureau of Economic Analysis https://apps.bea.gov/iTable/iTable.cfm?acrdn=1&isuri=1&reqid=70&step=1#reqid=70&step=6&isuri=1&7003=200&7035=-1&7004=naics&7005=-1&7001=1200&7036=-1&7002=1&7090=70&7007=2013 
 
-
     * U.S. Bureau of Economic Analysis https://www.bea.gov/ 
-
-
+    
     * U.S. Bureau of Economic Analysis https://apps.bea.gov/iTable/iTable.cfm?reqid=99&step=1#reqid=99&step=1&isuri=1 
-
 
     * The World Bank https://data.worldbank.org/indicator/NY.GDP.MKTP.CD?locations=PR
 
-
     * The Wikipedia https://en.wikipedia.org/wiki/List_of_Chinese_administrative_divisions_by_GDP
 
-
     * The Wikipedia https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)
-
 
     * The Wikipedia https://en.wikipedia.org/wiki/List_of_Indian_states_and_union_territories_by_GDP_per_capita
 
