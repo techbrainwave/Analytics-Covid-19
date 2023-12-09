@@ -3,10 +3,16 @@ Subnational Analysis of Novel Coronavirus (COVID-19) across the top three populo
 
 View the full report [here](https://github.com/techbrainwave/COVID-19/blob/main/Covid_19.pdf).
 
-## Preview of Cases & Deaths for Urban and Rural 
+## Preview of Cases & Deaths 
+* United States
+* Urban and Rural
+  
 ![Cases & Deaths for Urban and Rural](https://github.com/techbrainwave/COVID-19/blob/main/charts/Image1.png?)
 
-## Preview of Covid Deaths for United States, India and China.
+## Preview of Covid Deaths 
+* United States
+* India and
+* China  
 
 ![Covid Deaths for major countries](https://github.com/techbrainwave/COVID-19/blob/main/charts/Image.png)
 
